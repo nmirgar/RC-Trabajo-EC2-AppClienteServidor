@@ -10,6 +10,8 @@
 #define EXIT "EXIT"
 #define LIST_FILES "LIST_FILES"
 #define DOWNLOAD_FILE "DOWNLOAD_FILE"
+#define REMOVE_FILE "REMOVE_FILE"
+#define RENAME_FILE "RENAME_FILE"
 
 
 void recibeArchivo(int socket, char* nombreArchivo);
@@ -59,7 +61,7 @@ int main(int argc, char *argv[])
                 printf("Send failed\n");
                 return 1;
             }
-            printf("Message sent. Content: %s\n", argv[2]);
+            printf("Message sent. Content: %s\n", message);
             // Receive a reply from the server
             if (recv(socket_desc, server_reply, _BUFFER_SIZE, 0) < 0)
             {
@@ -104,17 +106,58 @@ int main(int argc, char *argv[])
                         printf("Send failed\n");
                         return 1;
                     }
-                    //printf("Message sent. Content: %s\n", message);
-                    else
-                    {
-                        recibeArchivo(socket_desc, argv3);
-                    }
+
+                    
+                    recibeArchivo(socket_desc, argv3);
 
                     //Tenemos que escuchar el servidor y crear un archivo con los datos del servidor
                 }
 
             }
-        }else{
+        }
+
+        //REMOVE FILE
+        else if(strncmp(message, REMOVE_FILE, strlen(REMOVE_FILE)) == 0){
+            if (send(socket_desc, message, strlen(message) + 1, 0) < 0) // Importante el +1 para enviar el finalizador de cadena!!
+            {
+                printf("Send failed\n");
+                return 1;
+            }
+            printf("Message sent. Content: %s\n", message);
+
+            if (recv(socket_desc, server_reply, _BUFFER_SIZE, 0) < 0)
+            {
+                printf("Recv failed.\n");
+            }
+            else
+            {
+                printf("Reply received. Content: %s\n", server_reply);
+            }
+        }
+        
+
+        //RENAME FILE
+        else if(strncmp(message, RENAME_FILE, strlen(RENAME_FILE)) == 0)
+        {
+            if (send(socket_desc, message, strlen(message) + 1, 0) < 0) // Importante el +1 para enviar el finalizador de cadena!!
+            {
+                printf("Send failed\n");
+                return 1;
+            }
+            printf("Message sent. Content: %s\n", message);
+
+            if (recv(socket_desc, server_reply, _BUFFER_SIZE, 0) < 0)
+            {
+                printf("Recv failed.\n");
+            }
+            else
+            {
+                printf("Reply received. Content: %s\n", server_reply);
+            }
+        }
+
+        //COMANDO NO RECONOCIDO
+        else{
             printf("UNKOWN");
         }
     
@@ -140,21 +183,16 @@ void recibeArchivo(int socket_desc, char * nombreArchivo){
     else
     {
         // Receive a reply from the server
-        if (recv(socket_desc, server_reply, _BUFFER_SIZE, 0) < 0)
-        {
-            printf("Recv failed.\n");
+
+        printf("\nDentro de recibe\n");
+        //Da error este recv
+       
+        if(recv(socket_desc, server_reply, _BUFFER_SIZE, 0) < 0){
+            printf("Fallo al recibir\n");
+        }else{
+            printf("Sin fallo al recibir");
         }
 
-        while (strcmp(server_reply, "FIN") != 0)
-        {
-            //Escribimos
-            fwrite(server_reply, 1, _BUFFER_SIZE, f);
-            // Receive a reply from the server
-            if (recv(socket_desc, server_reply, _BUFFER_SIZE, 0) < 0)
-            {
-                printf("Recv failed.\n");
-            }
-        }
         
     }
     fclose(f);

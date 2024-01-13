@@ -17,6 +17,7 @@ void delete_file(int socket, char info[]);
 void rename_file(int socket, char nombreActual[], char nuevoNombre[]);
 
 void enviarArchivo(int socket, char* nombreArchivo);
+
 int main(int argc, char *argv[])
 {
     int socket_desc, accepted_socket;
@@ -91,8 +92,10 @@ int main(int argc, char *argv[])
             //Ejercicio 5: RENAME_FILE
             else if (strcmp(buffer, "RENAME_FILE") == 0)
             {
-                //strtok()
-                rename_file(accepted_socket, buffer, "nuevoNombre");
+                strtok(buffer, " ");
+                char * nombreArchivo = strtok(NULL, " ");
+                char * nuevoNombre = strtok(NULL, " ");
+                rename_file(accepted_socket, nombreArchivo, nuevoNombre);
             }
             //CLOSE
             else if (strcmp(buffer, "CLOSE") == 0)
@@ -212,7 +215,7 @@ void download_file(int accepted_socket, char* nombreArchivo){
 
             if(strcmp(buffer, "ACK") == 0)
             {
-                enviarArchivo(accepted_socket, entry->d_name);
+                enviarArchivo(accepted_socket, nombreArchivo);
             }
         }
     }
@@ -238,17 +241,31 @@ void enviarArchivo(int accepted_socket, char *nombreArchivo){
     f = fopen(nombreArchivo, "rb");
     char byteLeidos;
     char buffer[_BUFFER_SIZE];
+
+    printf("Dentro de la funcion enviar archivi\n");
     if(f == NULL){
         printf("Error al abrir el archivo");
     }
     else
     {
-        while(((byteLeidos = fread(buffer, 1, _BUFFER_SIZE, f))> 0))
-        {
-            if(send(accepted_socket, buffer, byteLeidos, 0 )< 0){
-                printf("\nENVIO FALLIDO\n");
-            }
+        byteLeidos = fread(buffer, 1, _BUFFER_SIZE, f);
+        printf("\nEnviando bytes, %s\n", buffer);
+
+        if(send(accepted_socket, buffer, strlen(buffer)+1, 0 )< 0){
+            printf("\nENVIO FALLIDO\n");
         }
+        /*do
+        {
+            printf("\nEnviando bytes, contenido %s\n", buffer);
+            if(send(accepted_socket, buffer, strlen(buffer)+1, 0 )< 0){
+                printf("\nENVIO FALLIDO\n");
+                break;
+            }else{
+                printf("\nEnviadoss bytes\n");
+                byteLeidos = fread(buffer, 1, _BUFFER_SIZE, f);
+            }
+            
+        }while(!feof);*/
         if(send(accepted_socket, "FIN", strlen("FIN") +1, 0 )< 0){
                 printf("\nENVIO FALLIDO\n");
             }
@@ -257,6 +274,41 @@ void enviarArchivo(int accepted_socket, char *nombreArchivo){
     fclose(f); 
 }
 
-void upload_file(int socket, char info[]){}
-void delete_file(int socket, char info[]){}
-void rename_file(int socket, char nombreActual[], char nuevoNombre[]){}
+void upload_file(int accepted_socket, char info[]){}
+void delete_file(int accepted_socket, char nombreArchivo[]){
+    if(remove(nombreArchivo) == 0) //Se consigue eliminar el archivo
+    {
+        if(send(accepted_socket, "DELETED", strlen("DELETED") + 1, 0) < 0)
+        {
+            printf("Send failed\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    else //No se consigue eliminar el archivo
+    {
+        if(send(accepted_socket, "ERROR", strlen("ERROR") + 1, 0) < 0)
+        {
+            printf("Send failed\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+void rename_file(int accepted_socket, char nombreActual[], char nuevoNombre[])
+{
+    if(rename(nombreActual, nuevoNombre ) == 0) //Se consigue cambiar el nombre del archivo
+    {
+        if(send(accepted_socket, "RENAMED", strlen("RENAMED") + 1, 0) < 0)
+        {
+            printf("Send failed\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    else //No se consigue cambiar el nombre del archivo
+    {
+        if(send(accepted_socket, "RENAME_ERROR", strlen("RENAME_ERROR") + 1, 0) < 0)
+        {
+            printf("Send failed\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+}
