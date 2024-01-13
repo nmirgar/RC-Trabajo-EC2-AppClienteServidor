@@ -3,11 +3,14 @@
 #include <sys/socket.h>
 #include <arpa/inet.h> //inet_addr
 #include <unistd.h>
+#include <stdlib.h>
 
 #define ECHO_PORT 5665
 #define _BUFFER_SIZE 2000
-#define LIST_FILE "LIST_FILE"
 #define EXIT "EXIT"
+#define LIST_FILES "LIST_FILES"
+#define DOWNLOAD_FILE "DOWNLOAD_FILE"
+
 int main(int argc, char *argv[])
 {
     int socket_desc;
@@ -43,27 +46,56 @@ int main(int argc, char *argv[])
 
     // Send some data
     message = "ECHO";
-    if (argc > 2)
-        message = argv[2]; // Si existe, el segundo argumento es el mensaje
+    if (argc > 2){
+        message = argv[2];
+        if(strncmp(message, LIST_FILES, strlen(LIST_FILES)) == 0){
+           
+            if (send(socket_desc, message, strlen(message) + 1, 0) < 0) // Importante el +1 para enviar el finalizador de cadena!!
+            {
+                printf("Send failed\n");
+                return 1;
+            }
+            printf("Message sent. Content: %s\n", argv[2]);
+            // Receive a reply from the server
+            if (recv(socket_desc, server_reply, _BUFFER_SIZE, 0) < 0)
+            {
+                printf("Recv failed.\n");
+            }
+            else
+            {
+                printf("Reply received. Content: %s\n", server_reply);
+            }
+        }else if(message = DOWNLOAD_FILE){
 
+            printf("\n\n%s\n\n", argv[3]);
+            //100*100 que el fallo es en el strcat
+            //strcat(message, " ");
+            //strcat(message, argv[3]);
+            printf("\n\nDATOS A ENVIAR %s\n\n", message);
+            if (send(socket_desc, message, strlen(message) + 1, 0) < 0) // Importante el +1 para enviar el finalizador de cadena!!
+            {
+                printf("Send failed\n");
+                return 1;
+            }
+            printf("Message sent. Content: %s\n", message);
 
+            // Receive a reply from the server
+            if (recv(socket_desc, server_reply, _BUFFER_SIZE, 0) < 0)
+            {
+                printf("Recv failed.\n");
+            }
+            else
+            {
+                printf("Reply received. Content: %s\n", server_reply);
+            }
+        }else{
+            printf("UNKOWN");
+        }
     
-    if (send(socket_desc, message, strlen(message) + 1, 0) < 0) // Importante el +1 para enviar el finalizador de cadena!!
-    {
-        printf("Send failed\n");
-        return 1;
     }
-    printf("Message sent. Content: %s\n", message);
 
-    // Receive a reply from the server
-    if (recv(socket_desc, server_reply, _BUFFER_SIZE, 0) < 0)
-    {
-        printf("Recv failed.\n");
-    }
-    else
-    {
-        printf("Reply received. Content: %s\n", server_reply);
-    }
+
+    printf("AQUI");
     
     if(message == EXIT){
         close(socket_desc);
