@@ -10,7 +10,7 @@
 #define EXIT "EXIT"
 #define LIST_FILES "LIST_FILES"
 #define DOWNLOAD_FILE "DOWNLOAD_FILE"
-#define REMOVE_FILE "REMOVE_FILE"
+#define DELETE_FILE "DELETE_FILE"
 #define RENAME_FILE "RENAME_FILE"
 
 
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
             printf("\nEntramos en DOWNLOAD\n");
             char argv3[_BUFFER_SIZE] ;
             strcpy(argv3, argv[3]);
-            strcat(message ,";"); //concatenemos el caracter delimitador de palabras
+            strcat(message ," "); //concatenemos el caracter delimitador de palabras
             strcat(message, argv3);
             printf("\nDATOS A ENVIAR %s\n", message);
             if (send(socket_desc, message, strlen(message) + 1, 0) < 0) // Importante el +1 para enviar el finalizador de cadena!!
@@ -116,8 +116,15 @@ int main(int argc, char *argv[])
             }
         }
 
-        //REMOVE FILE
-        else if(strncmp(message, REMOVE_FILE, strlen(REMOVE_FILE)) == 0){
+        //DELETE FILE
+        else if(strncmp(message, DELETE_FILE, strlen(DELETE_FILE)) == 0){
+            char argv3[_BUFFER_SIZE] ;
+
+            strcpy(argv3, argv[3]); //nombre del archivo a borrar
+            strcat(message ," "); //concatenemos el caracter delimitador de palabras
+            strcat(message, argv3);
+
+            printf("\nDATOS A ENVIAR %s\n", message);
             if (send(socket_desc, message, strlen(message) + 1, 0) < 0) // Importante el +1 para enviar el finalizador de cadena!!
             {
                 printf("Send failed\n");
@@ -139,6 +146,20 @@ int main(int argc, char *argv[])
         //RENAME FILE
         else if(strncmp(message, RENAME_FILE, strlen(RENAME_FILE)) == 0)
         {
+            char argv3[_BUFFER_SIZE] ;
+            char argv4[_BUFFER_SIZE] ;
+
+            strcpy(argv3, argv[3]); //nombre antiguo del archivo
+            strcat(message ," "); //concatenemos el caracter delimitador de palabras
+            strcat(message, argv3);
+
+            strcpy(argv4, argv[4]); //nombre nuevo del archivo
+            strcat(message, " ");
+            strcat(message, argv4);
+
+
+            printf("\nDATOS A ENVIAR %s\n", message);
+
             if (send(socket_desc, message, strlen(message) + 1, 0) < 0) // Importante el +1 para enviar el finalizador de cadena!!
             {
                 printf("Send failed\n");

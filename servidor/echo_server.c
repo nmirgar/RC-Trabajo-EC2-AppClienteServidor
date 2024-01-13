@@ -5,6 +5,7 @@
 #include <unistd.h>    // Close sockets
 #include <dirent.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #define ECHO_PORT 5665
 #define _BUFFER_SIZE 2000
@@ -73,24 +74,26 @@ int main(int argc, char *argv[])
 			//./client 127.0.0.1 DOWNLOAD_FILE nombreArchivo
             else if(strncmp(buffer, "DOWNLOAD_FILE", strlen("DOWNLOAD_FILE")) == 0)
             {   
-				strtok(buffer, ";");	//No queremos la primera así que no la guardamos
+				strtok(buffer, " ");	//No queremos la primera así que no la guardamos
 				char * nombreArchivo = strtok(NULL, " ");	// Guardamos la segunda palabra que es el nombre del archivo				
                 download_file(accepted_socket, nombreArchivo);
             }
             //Ejercicio 3: UPOLOAD_FILE
-            else if (strcmp(buffer, "UPLOAD_FILE") == 0)
+            else if (strncmp(buffer, "UPLOAD_FILE", strlen("UPLOAD_FILE")) == 0)
             {
+                //TODO --> IMPLEMENTAR
                 upload_file(accepted_socket, buffer);
             }
             //Ejercicio 4: DELETE_FILE
-            else if (strcmp(buffer, "DELETE_FILE") == 0)
+            else if (strncmp(buffer, "DELETE_FILE", strlen("DELETE_FILE")) == 0)
             {
                 strtok(buffer, " ");
                 char *nombreArchivo = strtok(NULL, " ");
+                printf("NOMBRE ARCHIVO %s", nombreArchivo);
                 delete_file(accepted_socket, nombreArchivo);
             }
             //Ejercicio 5: RENAME_FILE
-            else if (strcmp(buffer, "RENAME_FILE") == 0)
+            else if (strncmp(buffer, "RENAME_FILE", strlen("RENAME_FILE")) == 0)
             {
                 strtok(buffer, " ");
                 char * nombreArchivo = strtok(NULL, " ");
@@ -277,8 +280,11 @@ void enviarArchivo(int accepted_socket, char *nombreArchivo){
 
 void upload_file(int accepted_socket, char info[]){}
 void delete_file(int accepted_socket, char nombreArchivo[]){
+    
+   
     if(remove(nombreArchivo) == 0) //Se consigue eliminar el archivo
     {
+        printf("aqui");
         if(send(accepted_socket, "DELETED", strlen("DELETED") + 1, 0) < 0)
         {
             printf("Send failed\n");
@@ -287,6 +293,7 @@ void delete_file(int accepted_socket, char nombreArchivo[]){
     }
     else //No se consigue eliminar el archivo
     {
+        printf("Error: %d\n", errno);
         if(send(accepted_socket, "ERROR", strlen("ERROR") + 1, 0) < 0)
         {
             printf("Send failed\n");
