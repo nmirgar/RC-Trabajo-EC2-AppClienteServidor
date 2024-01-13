@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
                         return 1;
                     }
 
-                    
+
                     recibeArchivo(socket_desc, argv3);
 
                     //Tenemos que escuchar el servidor y crear un archivo con los datos del servidor
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
 
 void recibeArchivo(int socket_desc, char * nombreArchivo){
     FILE *f;
-    char * server_reply;
+    char server_reply[_BUFFER_SIZE];
     f = fopen(nombreArchivo, "wb");
     if(f == NULL)
     {
@@ -186,15 +186,24 @@ void recibeArchivo(int socket_desc, char * nombreArchivo){
 
         printf("\nDentro de recibe\n");
         //Da error este recv
-       
+        
         if(recv(socket_desc, server_reply, _BUFFER_SIZE, 0) < 0){
             printf("Fallo al recibir\n");
-        }else{
-            printf("Sin fallo al recibir");
         }
-
+        while (strcmp(server_reply, "FIN") != 0)
+        {
+            fwrite(server_reply, 1, strlen(server_reply) , f);
+            if (send(socket_desc, "copiado", strlen("copiado") , 0) < 0) // Importante el +1 para enviar el finalizador de cadena!!
+            {
+                printf("Send failed\n");
+            }
+            if(recv(socket_desc, server_reply, _BUFFER_SIZE, 0) < 0){
+                printf("Fallo al recibir\n");
+        
+            }
+        
         
     }
     fclose(f);
-    
+    }
 }

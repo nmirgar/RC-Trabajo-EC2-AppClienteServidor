@@ -251,21 +251,22 @@ void enviarArchivo(int accepted_socket, char *nombreArchivo){
         byteLeidos = fread(buffer, 1, _BUFFER_SIZE, f);
         printf("\nEnviando bytes, %s\n", buffer);
 
-        if(send(accepted_socket, buffer, strlen(buffer)+1, 0 )< 0){
-            printf("\nENVIO FALLIDO\n");
-        }
-        /*do
+        
+        do
         {
             printf("\nEnviando bytes, contenido %s\n", buffer);
             if(send(accepted_socket, buffer, strlen(buffer)+1, 0 )< 0){
                 printf("\nENVIO FALLIDO\n");
-                break;
             }else{
                 printf("\nEnviadoss bytes\n");
                 byteLeidos = fread(buffer, 1, _BUFFER_SIZE, f);
             }
+
+            if(recv(accepted_socket, buffer, _BUFFER_SIZE, 0) < 0){
+                printf("Fallo al recibir\n");
+            }
             
-        }while(!feof);*/
+        }while(!feof);
         if(send(accepted_socket, "FIN", strlen("FIN") +1, 0 )< 0){
                 printf("\nENVIO FALLIDO\n");
             }
