@@ -1,0 +1,26 @@
+Preguntas que entran
+
+Que es un socket y los parámetros a la hora de crearlos
+    socket_desc = socket(AF_INET, SOCK_STREAM, 0);
+    Primer parámetro indica IPv4
+    Segundo indica conexion segura => protocolo TCP
+    Tercero indica el protocolo, se indicó anteriormente 
+
+
+Configuracion del servidor
+    server_addr.sin_addr.s_addr = inet_addr(address);
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(ECHO_PORT);
+
+Conectar socket a servidor
+    connect(socket_desc, (struct sockaddr *)&server, sizeof(server)) 
+
+bind => configuracion de servidor
+listen => servidor pasivo, a la escucha de clientes
+
+
+Para poder hacer la arquitectura cliente-servidor con dos pcs que esten en diferentes redes hay que hacer una VPN (opcional)
+
+Tendremos que trabajar con archivos por tanto será necesario usar fwrite(), fopen(), fread()...
+
+Si el fichero ocupa mas de _BUFFER_SIZE se ha de enviar a trozos
