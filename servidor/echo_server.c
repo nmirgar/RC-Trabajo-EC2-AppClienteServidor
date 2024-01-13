@@ -11,11 +11,12 @@
 #define NUM_MAX_ARG 10
 
 void list_files(int socket);
-void download_file(int socket, char info[]);
+void download_file(int socket, char *nombreArchivo);
 void upload_file(int socket, char info[]);
 void delete_file(int socket, char info[]);
 void rename_file(int socket, char nombreActual[], char nuevoNombre[]);
 
+void enviarArchivo(int socket, char* nombreArchivo);
 int main(int argc, char *argv[])
 {
     int socket_desc, accepted_socket;
@@ -71,13 +72,9 @@ int main(int argc, char *argv[])
 			//./client 127.0.0.1 DOWNLOAD_FILE nombreArchivo
             else if(strncmp(buffer, "DOWNLOAD_FILE", strlen("DOWNLOAD_FILE")) == 0)
             {   
-				printf("\nEntramos en download\n");
-				printf("\n\nBuffer antes de separar%s\n\n", buffer);				//Recortamos DELETE_FILE y lo guardamos en name0
-				char *name0 = strtok(buffer, " ");	
-				printf("\n\nBuffer despues de separar%s\n\n", buffer);				//Recortamos DELETE_FILE y lo guardamos en name0
-				char *name1 = strtok(NULL, " ");					//Recortamos el nombre del archivo y lo guardamos en name1
-				printf("%s\n", name1);								//Imprimimos el nombre
-				download_file(accepted_socket, name1);
+				strtok(buffer, ";");	//No queremos la primera así que no la guardamos
+				char * nombreArchivo = strtok(NULL, " ");	// Guardamos la segunda palabra que es el nombre del archivo				
+                download_file(accepted_socket, nombreArchivo);
             }
             //Ejercicio 3: UPOLOAD_FILE
             else if (strcmp(buffer, "UPLOAD_FILE") == 0)
@@ -123,8 +120,9 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+char *nombreArchivosDirectorio(){
 
-
+}
 
 void list_files(int accepted_socket){
 
@@ -134,7 +132,6 @@ void list_files(int accepted_socket){
 	//Procesar
 	////////////////////////
 
-	
 	//Abrimos el directo actual
 	DIR *dir = opendir(".");
 
@@ -154,7 +151,7 @@ void list_files(int accepted_socket){
 	closedir(dir);
 	
 	//Enviar info al servidor
-	if (send(accepted_socket, file_list, strlen(file_list), 0) < 0)
+	if (send(accepted_socket, file_list, strlen(file_list) +1 , 0) < 0)
 		{
 			printf("Send failed\n");
 			//Debemos de cerrar el servidor para que no se quede la conexion abierta
@@ -163,7 +160,103 @@ void list_files(int accepted_socket){
 	printf("Echo sent. Content: %s\n", file_list);
 	
 }
-void download_file(int socket, char info[]){}
+
+
+void download_file(int accepted_socket, char* nombreArchivo){
+    int exito = 0; 
+    char buffer[_BUFFER_SIZE];
+    struct dirent *entry;
+	/////////////////////////
+	//Procesar
+	////////////////////////
+
+	//Abrimos el directo actual
+	DIR *dir = opendir(".");
+    printf("\n\nAQUI1\n\n");
+    if (dir == NULL) {
+        perror("Error al abrir el directorio");
+        exit(EXIT_FAILURE); 
+    }
+    printf("\n\nAQUI\n\n");
+
+	while ((entry = readdir(dir)) != NULL) { //Mientras haya informacion
+			// Ignora las entradas "." y "..", estos son los directorios ocultos
+			if (strcmp(entry->d_name, nombreArchivo) ) {
+                exito = 1;   
+			}
+	}
+    printf("\n\nAQUI2\n\n");
+    
+    if(exito){
+        //Enviar longitud al servidor
+        printf("\n\nAQUI3\n\n");
+        
+        if (send(accepted_socket, nombreArchivo, strlen(nombreArchivo) +1 , 0) < 0)
+            {
+                printf("Send failed\n");
+                //Debemos de cerrar el servidor para que no se quede la conexion abierta
+                exit(EXIT_FAILURE);
+            }
+        printf("Echo sent. Content: %s\n", nombreArchivo );
+
+        printf("\n\nAQUI4\n\n");
+
+        //Escuchar si hemos recibido "ACK" entonces enviamos el archivo en binario
+        if(recv(accepted_socket, buffer, _BUFFER_SIZE, 0) < 0)
+        {
+            printf("Recv failed.\n");
+        }
+        else
+        {
+            printf("\n\nAQUI5\n\n");
+
+            if(strcmp(buffer, "ACK") == 0)
+            {
+                enviarArchivo(accepted_socket, entry->d_name);
+            }
+        }
+    }
+    //Si no hemos cambiado el valor de exito es porque no hemos encontrado ese archivo entonces respondemos con ERROR
+    else{
+        //Enviar ERROR al servidor
+        if (send(accepted_socket, "ERROR", strlen("ERROR") +1, 0) < 0)
+            {
+                printf("Send failed\n");
+                //Debemos de cerrar el servidor para que no se quede la conexion abierta
+                exit(EXIT_FAILURE);
+            }
+        printf("Echo sent. Content: ERROR\n");
+    }
+	//Cerranos directorio
+	closedir(dir);
+
+}
+
+//Funcion auxiliar para enviar un archivo
+void enviarArchivo(int accepted_socket, char *nombreArchivo){
+    FILE *f;
+    f = fopen(nombreArchivo, "rb");
+    char byteLeidos;
+    char buffer[_BUFFER_SIZE];
+    if(f == NULL){
+        printf("Error al abrir el archivo");
+    }
+    else
+    {
+        while(((byteLeidos = fread(buffer, 1, _BUFFER_SIZE, f))> 0))
+        {
+            if(send(accepted_socket, buffer, byteLeidos, 0 )< 0){
+                printf("\nENVIO FALLIDO\n");
+            }
+        }
+        if(send(accepted_socket, "FIN", strlen("FIN") +1, 0 )< 0){
+                printf("\nENVIO FALLIDO\n");
+            }
+
+    }
+    fclose(f); 
+}
+
 void upload_file(int socket, char info[]){}
 void delete_file(int socket, char info[]){}
 void rename_file(int socket, char nombreActual[], char nuevoNombre[]){}
