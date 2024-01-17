@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/stat.h> //Necesaria para hallar la longitud en bytes del fichero
+#include <ctype.h> //isdigit
 
 #define ECHO_PORT 5665
 #define _BUFFER_SIZE 2000
@@ -14,10 +15,11 @@
 
 void list_files(int socket);
 void download_file(int socket, char *nombreArchivo);
-void upload_file(int socket, char info[]);
-void delete_file(int socket, char info[]);
-void rename_file(int socket, char nombreActual[], char nuevoNombre[]);
+void upload_file(int socket, char *nombreArchivo);
+void delete_file(int socket, char *nombreArchivo);
+void rename_file(int socket, char *nombreActual, char * nuevoNombre);
 void enviarArchivo(int socket, char* nombreArchivo);
+void recibeArchivo(int socket, char* nombreArchivo);
 char *longitud_fichero(char* nombreArchivo);
 
 int main(int argc, char *argv[])
@@ -83,8 +85,9 @@ int main(int argc, char *argv[])
             //Ejercicio 3: UPOLOAD_FILE
             else if (strncmp(buffer, "UPLOAD_FILE", strlen("UPLOAD_FILE")) == 0)
             {
-                //TODO --> IMPLEMENTAR
-                upload_file(accepted_socket, buffer);
+                strtok(buffer, " ");	//No queremos la primera así que no la guardamos
+				char * nombreArchivo = strtok(NULL, " ");	// Guardamos la segunda palabra que es el nombre del archivo				
+                upload_file(accepted_socket, nombreArchivo);
             }
             //Ejercicio 4: DELETE_FILE
             else if (strncmp(buffer, "DELETE_FILE", strlen("DELETE_FILE")) == 0)
@@ -201,6 +204,7 @@ void download_file(int accepted_socket, char* nombreArchivo){
         if(recv(accepted_socket, buffer, _BUFFER_SIZE, 0) < 0)
         {
             printf("Recv failed.\n");
+            exit(EXIT_FAILURE);
         }
         else
         {
@@ -226,47 +230,43 @@ void download_file(int accepted_socket, char* nombreArchivo){
 
 }
 
-//Funcion auxiliar para enviar un archivo
-void enviarArchivo(int accepted_socket, char *nombreArchivo){
-    FILE *f;
-    f = fopen(nombreArchivo, "rb");
-    char byteLeidos;
-    char buffer[_BUFFER_SIZE];
 
-    printf("Dentro de la funcion enviar archivi\n");
-    if(f == NULL){
-        printf("Error al abrir el archivo");
-    }
-    else
+void upload_file(int accepted_socket, char * nombreArchivo){
+    char buffer [_BUFFER_SIZE];
+
+    //Este primer upload es debido al envío de UOLOAD_FILE nombreArchivo de parte del cliente
+    if(send(accepted_socket, "UPLOAD_ACK", strlen("UPLOAD_ACK") + 1, 0) < 0)
     {
-        byteLeidos = fread(buffer, 1, _BUFFER_SIZE, f);
-        printf("\nEnviando bytes, %s\n", buffer);
-
-        
-        do
-        {
-            printf("\nEnviando bytes, contenido %s\n", buffer);
-            if(send(accepted_socket, buffer, strlen(buffer)+1, 0 )< 0){
-                printf("\nENVIO FALLIDO\n");
-            }else{
-                printf("\nEnviadoss bytes\n");
-                byteLeidos = fread(buffer, 1, _BUFFER_SIZE, f);
-            }
-
-            if(recv(accepted_socket, buffer, _BUFFER_SIZE, 0) < 0){
-                printf("Fallo al recibir\n");
-            }
-            
-        }while(!feof);
-        if(send(accepted_socket, "FIN", strlen("FIN") +1, 0 )< 0){
-                printf("\nENVIO FALLIDO\n");
-            }
-
+        printf("Send failed\n");
+        exit(EXIT_FAILURE);
     }
-    fclose(f); 
-}
-
-void upload_file(int accepted_socket, char info[]){
+    printf("\nAntes de recibir la longitud\n");
+    if(recv(accepted_socket, buffer, _BUFFER_SIZE, 0) < 0)
+    {
+        printf("Recv failed.\n");
+        exit(EXIT_FAILURE);
+    }
+    //Si recibimos un numero como respuesta esta es la longitud así que la ejecución está siendo correcta
+    if(isdigit((int) buffer[0])){
+        printf("\nHemos recibido un número\n");
+         //Este primer upload es debido al envío de UOLOAD_FILE nombreArchivo de parte del cliente
+        if(send(accepted_socket, "UPLOAD_ACK", strlen("UPLOAD_ACK") + 1, 0) < 0)
+        {
+            printf("Send failed\n");
+            exit(EXIT_FAILURE);
+        }
+        recibeArchivo(accepted_socket, nombreArchivo);
+        //Si no ha dado ninún fallo en recibeArchivo() enviamos SUCCESS
+        if(send(accepted_socket, "SUCCESS", strlen("SUCCESS") + 1, 0) < 0)
+        {
+            printf("Send failed\n");
+            exit(EXIT_FAILURE);
+        }else{
+            printf("\nSUCCESS\n");
+        }
+    }else{
+        printf("\nNo hemos recibido un número\n");
+    }
 
 }
 void delete_file(int accepted_socket, char nombreArchivo[]){
@@ -274,7 +274,6 @@ void delete_file(int accepted_socket, char nombreArchivo[]){
    
     if(remove(nombreArchivo) == 0) //Se consigue eliminar el archivo
     {
-        printf("aqui");
         if(send(accepted_socket, "DELETED", strlen("DELETED") + 1, 0) < 0)
         {
             printf("Send failed\n");
@@ -325,3 +324,75 @@ char* longitud_fichero(char * nombreArchivo){
     sprintf(len, "%ld", fichero.st_size);
     return  len;
 }
+
+
+//Funcion auxiliar para enviar un archivo
+void enviarArchivo(int accepted_socket, char *nombreArchivo){
+    FILE *f;
+    f = fopen(nombreArchivo, "rb");
+    char byteLeidos;
+    char buffer[_BUFFER_SIZE];
+
+    if(f == NULL){
+        printf("Error al abrir el archivo");
+    }
+    else
+    {
+        byteLeidos = fread(buffer, 1, _BUFFER_SIZE, f);
+        
+
+        
+        do
+        {
+            printf("\nEnviando bytes, contenido %s\n", buffer);
+            if(send(accepted_socket, buffer, strlen(buffer)+1, 0 )< 0){
+                printf("\nENVIO FALLIDO\n");
+            }else{
+                printf("\nEnviados bytes\n");
+                byteLeidos = fread(buffer, 1, _BUFFER_SIZE, f);
+            }
+
+            if(recv(accepted_socket, buffer, _BUFFER_SIZE, 0) < 0){
+                printf("Fallo al recibir\n");
+            }
+            
+        }while(!feof);
+        if(send(accepted_socket, "FIN", strlen("FIN") +1, 0 )< 0){
+                printf("\nENVIO FALLIDO\n");
+            }
+
+    }
+    fclose(f); 
+}
+
+void recibeArchivo(int socket_desc, char * nombreArchivo){
+    FILE *f;
+    char server_reply[_BUFFER_SIZE];
+    f = fopen(nombreArchivo, "wb");
+    if(f == NULL)
+    {
+        printf("Error al abrir\n");	
+    }
+    else
+    {
+
+        if(recv(socket_desc, server_reply, _BUFFER_SIZE, 0) < 0){
+            printf("Fallo al recibir\n");
+        }
+        while (strcmp(server_reply, "FIN") != 0)
+        {
+            fwrite(server_reply, 1, strlen(server_reply) , f);
+            if (send(socket_desc, "copiado", strlen("copiado") +1 , 0) < 0) // Importante el +1 para enviar el finalizador de cadena!!
+            {
+                printf("Send failed\n");
+            }
+            if(recv(socket_desc, server_reply, _BUFFER_SIZE, 0) < 0){
+                printf("Fallo al recibir\n");
+            }
+        
+        
+        }
+        fclose(f);
+    }
+}
+
