@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <sys/stat.h> //Necesaria para hallar la longitud en bytes del fichero
 
 #define ECHO_PORT 5665
 #define _BUFFER_SIZE 2000
@@ -17,6 +18,7 @@ void upload_file(int socket, char info[]);
 void delete_file(int socket, char info[]);
 void rename_file(int socket, char nombreActual[], char nuevoNombre[]);
 void enviarArchivo(int socket, char* nombreArchivo);
+char *longitud_fichero(char* nombreArchivo);
 
 int main(int argc, char *argv[])
 {
@@ -64,7 +66,8 @@ int main(int argc, char *argv[])
         else
         {
             printf("Received data from client: %s\n", buffer); // TODO: If the message is too long --> may print garbage
-			//Empezamos a procesar
+			
+            //Empezamos a procesar
 			//Ejercicio 1: LIST_FILE
 			if(strncmp(buffer, "LIST_FILES", strlen("LIST_FILES")) == 0){
 				list_files(accepted_socket);
@@ -125,9 +128,7 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-char *nombreArchivosDirectorio(){
 
-}
 
 void list_files(int accepted_socket){
 
@@ -185,9 +186,9 @@ void download_file(int accepted_socket, char* nombreArchivo){
     
     if(exito){
         //Enviar longitud al servidor
-        char len[entry->d_reclen];
-        snprintf(len, sizeof len, "%u", entry->d_reclen);
-        if (send(accepted_socket, "", strlen("") +1  , 0) < 0)
+        char *len = longitud_fichero(nombreArchivo);
+        printf("\nLONGITUD DEL FICHERO: %s\n", len);
+        if (send(accepted_socket, len, strlen(len) +1  , 0) < 0)
             {
                 printf("Send failed\n");
                 //Debemos de cerrar el servidor para que no se quede la conexion abierta
@@ -310,3 +311,17 @@ void rename_file(int accepted_socket, char nombreActual[], char nuevoNombre[])
     }
 }
 
+char* longitud_fichero(char * nombreArchivo){
+    struct stat fichero;
+    //Usamos malloc (memory allocator) para assignar espacio en memoria en tiempo de ejecucion
+    //así una vez que termine la funcion seguiremos teniendo guardada esa informacion
+    char  *len = malloc(_BUFFER_SIZE) ;
+                    //Casting de int a char[_BUFFER_SIZE]
+    
+    if(stat(nombreArchivo, &fichero) == -1){
+        printf("Error en el fichero");
+        exit(EXIT_FAILURE);
+    }
+    sprintf(len, "%ld", fichero.st_size);
+    return  len;
+}

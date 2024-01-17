@@ -20,7 +20,7 @@ void list_files(int socket_desc, char* message);
 void download_file(int socket_desc, char* message);
 void delete_file(int socket_desc, char* message);
 void rename_file(int socket_desc, char *message);
-int longitud_fichero(char *filename);
+char* longitud_fichero(char *filename);
 void recibeArchivo(int socket, char* nombreArchivo);
 
 int main(int argc, char *argv[])
@@ -95,19 +95,14 @@ int main(int argc, char *argv[])
             }
 
             if(strncmp(server_reply, "UPLOAD_ACK", strlen("UPLOAD_ACK")) == 0){
-                int len_fichero = longitud_fichero(argv3);
-                if(len_fichero != -1){
-                    char  len[_BUFFER_SIZE] ;
-                    //Casting de int a char[_BUFFER_SIZE]
-                    sprintf(len, "%d", len_fichero);
-                    if (send(socket_desc, len, strlen(len) + 1, 0) < 0) // Importante el +1 para enviar el finalizador de cadena!!
-                    {
-                        printf("Send failed\n");
-                        return 1;
-                    }
-                }else{
-                    printf("No existe el fichero");
+                char * len = longitud_fichero(argv3);
+                printf("\nLONGITUD DEL FICHERO: %s\n", len);
+                if (send(socket_desc, len, strlen(len) + 1, 0) < 0) // Importante el +1 para enviar el finalizador de cadena!!
+                {
+                    printf("Send failed\n");
+                    return 1;
                 }
+                
 
             }else{
                 printf("ERROR");
@@ -178,10 +173,7 @@ void list_files(int socket_desc, char* message){
 }
 void download_file(int socket_desc, char *message){
     char server_reply[_BUFFER_SIZE];
-    //Recibibimos  DOWNLOAD_FILE nombreArchivo, necesitamos extraer el nombre para pasarselo a la 
-    //funcion recibeArchivo(socket_destino, nombreArchivo)
-    strtok(message, " ");	//No queremos la primera así que no la guardamos
-	char * nombreArchivo = strtok(NULL, " ");	// Guardamos la segunda palabra que es el nombre del archivo
+    
 
     printf("\nDATOS A ENVIAR %s\n", message);
     if (send(socket_desc, message, strlen(message) + 1, 0) < 0) // Importante el +1 para enviar el finalizador de cadena!!
@@ -208,7 +200,11 @@ void download_file(int socket_desc, char *message){
                 printf("Send failed\n");
                 exit(EXIT_FAILURE);
             }
-            				
+            //Recibibimos  DOWNLOAD_FILE nombreArchivo, necesitamos extraer el nombre para pasarselo a la 
+            //funcion recibeArchivo(socket_destino, nombreArchivo)
+            //Realizamos esto despues de usar message porque strok modifica la cadena orginal
+            strtok(message, " ");	//No queremos la primera así que no la guardamos
+	        char * nombreArchivo = strtok(NULL, " ");	// Guardamos la segunda palabra que es el nombre del archivo		
             recibeArchivo(socket_desc, nombreArchivo);
 
             //Tenemos que escuchar el servidor y crear un archivo con los datos del servidor
@@ -288,13 +284,17 @@ void recibeArchivo(int socket_desc, char * nombreArchivo){
         fclose(f);
     }
 }
-int longitud_fichero(char * nombreArchivo){
+char* longitud_fichero(char * nombreArchivo){
     struct stat fichero;
-
+    //Usamos malloc (memory allocator) para assignar espacio en memoria en tiempo de ejecucion
+    //así una vez que termine la funcion seguiremos teniendo guardada esa informacion
+    char  *len = malloc(_BUFFER_SIZE) ;
+                    //Casting de int a char[_BUFFER_SIZE]
+    
     if(stat(nombreArchivo, &fichero) == -1){
         printf("Error en el fichero");
         exit(EXIT_FAILURE);
     }
-
-    return (int) fichero.st_size;
+    sprintf(len, "%ld", fichero.st_size);
+    return  len;
 }
